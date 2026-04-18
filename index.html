@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S.E.E.D. — 요원 신상 카드 생성기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --paper: #F4F1EA; --paper-2: #ECE7DB; --paper-edge: #D6CFBE;
+  --ink: #0A0A0C; --ink-soft: #1B1B1F; --ink-faint: #8A8780; --rule: #1A1A1E;
+  --void: #050507; --void-2: #0E1014; --void-3: #181A20;
+  --bone: #E8E4DA; --bone-muted: #A6A39B; --bone-faint: #6F6D67; --hairline: #2A2C33;
+  --ink-blue: #1E4DDB; --ink-blue-bright: #4A7BFF;
+  --class-green: #2E8B3D; --class-yellow: #C8920A; --class-red: #C8252C;
+  --anomaly-magenta: #E5337C;
+}
+
+body {
+  background: #1a1a1e;
+  color: #e0ddd6;
+  font-family: 'Noto Sans KR', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+header {
+  width: 100%; max-width: 1100px;
+  padding: 28px 24px 16px;
+  display: flex; align-items: baseline; gap: 16px;
+  border-bottom: 1px solid #2a2c33;
+  margin-bottom: 20px;
+}
+.hd-title { font-family: 'Black Han Sans', sans-serif; font-size: 22px; letter-spacing: 0.04em; color: #e8e4da; }
+.hd-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; color: #6F6D67; }
+
+#status-bar {
+  width: 100%; max-width: 1100px;
+  padding: 10px 24px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.16em;
+  color: #6F6D67;
+  background: #0e1014; border-top: 1px solid #2a2c33; border-bottom: 1px solid #2a2c33;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px;
+}
+#status-bar.busy { color: #4A7BFF; border-color: #4A7BFF; }
+#status-bar.success { color: #2E8B3D; border-color: #2E8B3D; }
+#status-bar.error { color: #C8252C; border-color: #C8252C; white-space: pre-wrap; }
+
+.main-grid {
+  width: 100%; max-width: 1100px;
+  padding: 0 24px 48px;
+  display: grid; grid-template-columns: 360px 1fr; gap: 32px; align-items: start;
+}
+
+.form-panel { background: #0e1014; border: 1px solid #2a2c33; padding: 24px; }
+
+.panel-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 0.28em; text-transform: uppercase;
+  color: #6F6D67; margin-bottom: 18px; padding-bottom: 10px;
+  border-bottom: 1px solid #2a2c33;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-label::before { content: '●'; color: #4A7BFF; font-size: 8px; }
+
+.mode-wrap { margin-bottom: 20px; }
+.mode-title { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #6F6D67; margin-bottom: 8px; }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+.mode-btn {
+  padding: 10px 8px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer; border: 1px solid #2a2c33; background: transparent;
+  color: #6F6D67; text-align: center; transition: all 0.15s; line-height: 1.5;
+}
+.mode-btn:hover { border-color: #4a4c55; color: #a6a39b; }
+.mode-btn.sel-doc { background: #F4F1EA; color: #0A0A0C; border-color: #1A1A1E; }
+.mode-btn.sel-ano { background: #050507; color: #4A7BFF; border-color: #1E4DDB; }
+.mode-sub { display: block; font-size: 8px; opacity: 0.65; margin-top: 2px; }
+
+.fg { margin-bottom: 12px; }
+.fg label {
+  display: block; font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: #6F6D67; margin-bottom: 5px;
+}
+.fg input, .fg select {
+  width: 100%; background: #050507; border: 1px solid #2a2c33;
+  color: #e8e4da; font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; padding: 8px 10px; outline: none; transition: border-color 0.15s;
+}
+.fg input:focus, .fg select:focus { border-color: #4A7BFF; }
+.fg select { appearance: none; cursor: pointer; }
+.fg input[type=file] { font-size: 11px; padding: 6px 10px; cursor: pointer; }
+
+.btn-gen {
+  width: 100%; padding: 12px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  cursor: pointer; border: 1px solid #e8e4da; background: transparent;
+  color: #e8e4da; margin-top: 6px; transition: all 0.15s;
+}
+.btn-gen:hover { background: #e8e4da; color: #050507; }
+.btn-gen:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-dl {
+  width: 100%; padding: 12px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  cursor: pointer; border: none; margin-top: 8px; display: none; transition: opacity 0.15s;
+}
+.btn-dl:hover { opacity: 0.85; }
+.btn-dl.doc { background: #0A0A0C; color: #F4F1EA; }
+.btn-dl.ano { background: #1E4DDB; color: #E8E4DA; }
+
+.preview-panel { display: flex; flex-direction: column; gap: 16px; }
+.preview-panel-label {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  letter-spacing: 0.28em; text-transform: uppercase; color: #6F6D67;
+  display: flex; align-items: center; gap: 8px;
+}
+.preview-panel-label::before { content: '●'; color: #4A7BFF; font-size: 8px; }
+
+.card-stage {
+  background: #0e1014; border: 1px solid #2a2c33;
+  padding: 32px; display: flex; align-items: flex-start; justify-content: center;
+  min-height: 280px; overflow: hidden;
+}
+
+#card-wrap { transform-origin: top center; transform: scale(0.72); }
+
+/* ═══════════════════════════════════════════════════
+   THE CARD — 내용물에 딱 맞는 크기
+   내부: 사진 215px + 상하 패딩·헤더·푸터 ≈ 330px 총 높이
+   ═══════════════════════════════════════════════════ */
+#the-card {
+  width: 640px; height: 330px;
+  position: relative; overflow: hidden; flex-shrink: 0;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+#the-card.doc { background: #F4F1EA; border: 2px solid #1A1A1E; }
+#the-card.ano { background: #050507; border: 2px solid #2A2C33; }
+
+.top-accent { height: 4px; width: 100%; }
+#the-card.doc .top-accent { background: #0A0A0C; }
+#the-card.ano .top-accent { background: linear-gradient(90deg,#1E4DDB,#4A7BFF,#E5337C); }
+
+.ano-ambience {
+  display: none; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 60% at 10% 20%, rgba(30,77,219,0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 70% at 90% 85%, rgba(74,123,255,0.09) 0%, transparent 60%);
+}
+#the-card.ano .ano-ambience { display: block; }
+
+.card-body {
+  padding: 14px 22px 14px;
+  height: calc(100% - 4px);
+  display: flex; flex-direction: column;
+  position: relative; z-index: 1;
+}
+
+/* ── TOP HEADER ROW ── */
+.card-top {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+#the-card.doc .card-top { border-color: #1A1A1E; }
+#the-card.ano .card-top { border-color: #2A2C33; }
+
+.card-org {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px; letter-spacing: 0.18em;
+  font-weight: 700;
+}
+#the-card.doc .card-org { color: #0A0A0C; }
+#the-card.ano .card-org { color: #E8E4DA; }
+
+.class-pip {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.1em; font-weight: 700;
+  padding: 3px 11px; border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+}
+.pip-none   { background: rgba(100,100,110,0.15); color: #888;    border: 1.5px solid #555; }
+.pip-green  { background: rgba(46,139,61,0.15);   color: #2E8B3D; border: 1.5px solid #2E8B3D; }
+.pip-yellow { background: rgba(200,146,10,0.15);  color: #C8920A; border: 1.5px solid #C8920A; }
+.pip-red    { background: rgba(200,37,44,0.15);   color: #C8252C; border: 1.5px solid #C8252C; }
+.pip-black  { background: rgba(10,10,12,0.12);    color: #ccc;    border: 1.5px solid #555; }
+
+/* ── MAIN ROW: photo + fields ── */
+.card-main {
+  display: flex; gap: 22px; align-items: flex-start;
+  flex: 1; min-height: 0;
+}
+
+/* Photo — 레퍼런스 스타일 (작고 컴팩트, 좌측) */
+.photo-box {
+  width: 150px; height: 215px; flex-shrink: 0;
+  border: 1.5px solid;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+#the-card.doc .photo-box { border-color: #1A1A1E; background: #ECE7DB; }
+#the-card.ano .photo-box { border-color: #2A2C33; background: #0E1014; }
+.photo-box img {
+  width: 100%; height: 100%; object-fit: cover;
+  filter: grayscale(0.85) contrast(1.1) brightness(0.95);
+}
+.photo-placeholder {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.12em; text-align: center; line-height: 1.8;
+}
+#the-card.doc .photo-placeholder { color: #8A8780; }
+#the-card.ano .photo-placeholder { color: #6F6D67; }
+
+/* ── FIELDS — 레퍼런스 핵심: 도트 리더 스타일 ── */
+.card-fields {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.cf {
+  display: flex; align-items: baseline;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px; line-height: 1.4;
+  min-width: 0;
+}
+
+.cf .ck {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+/* The dotted leader — 레퍼런스의 "·······" 재현 */
+.cf .dots {
+  flex: 0 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  letter-spacing: 0.15em;
+  margin-right: 6px;
+  min-width: 24px;
+}
+
+.cf .cv {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Document mode colors */
+#the-card.doc .cf .ck   { color: #0A0A0C; }
+#the-card.doc .cf .dots { color: #8A8780; }
+#the-card.doc .cf .cv   { color: #0A0A0C; }
+#the-card.doc .cf .cv.hi  { color: #0A0A0C; font-weight: 700; }
+#the-card.doc .cf .cv.red { color: #C8252C; }
+#the-card.doc .cf .cv.yel { color: #8a6200; }
+
+/* Anomaly mode colors */
+#the-card.ano .cf .ck   { color: #E8E4DA; }
+#the-card.ano .cf .dots { color: #6F6D67; }
+#the-card.ano .cf .cv   { color: #E8E4DA; }
+#the-card.ano .cf .cv.hi  { color: #4A7BFF; font-weight: 700; }
+#the-card.ano .cf .cv.red { color: #C8252C; }
+#the-card.ano .cf .cv.yel { color: #C8920A; }
+
+/* ── FOOTER ── */
+.card-ftr {
+  border-top: 1px solid;
+  padding-top: 7px; flex-shrink: 0;
+  margin-top: 10px;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+#the-card.doc .card-ftr { border-color: #1A1A1E; }
+#the-card.ano .card-ftr { border-color: #2A2C33; }
+
+.card-slogan {
+  font-family: 'Noto Serif KR', serif;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+#the-card.doc .card-slogan { color: #1B1B1F; }
+#the-card.ano .card-slogan { color: #A6A39B; }
+
+.card-no {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+#the-card.doc .card-no { color: #5C5A55; }
+#the-card.ano .card-no { color: #6F6D67; }
+
+.note { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #6F6D67; text-align: center; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title">S . E . E . D .</div>
+  <div class="hd-sub">요원 신상 카드 생성기 — Agent ID Card Generator</div>
+</header>
+
+<div id="status-bar">
+  <span id="status-text">● 준비 완료 — 정보 입력 후 카드를 생성하세요</span>
+  <span id="status-right"></span>
+</div>
+
+<div class="main-grid">
+  <div class="form-panel">
+    <div class="panel-label">카드 정보 입력</div>
+
+    <div class="mode-wrap">
+      <div class="mode-title">모드 선택 / MODE</div>
+      <div class="mode-grid">
+        <button class="mode-btn sel-doc" id="btn-doc" onclick="setMode('doc')">
+          Document Mode<span class="mode-sub">냉혹한 정부 문서</span>
+        </button>
+        <button class="mode-btn" id="btn-ano" onclick="setMode('ano')">
+          Anomaly Mode<span class="mode-sub">초자연 잉크 번짐</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>요원 이름 (NAME)</label>
+      <input type="text" id="f-name" value="████ ████" placeholder="이름 또는 [REDACTED]">
+    </div>
+    <div class="fg">
+      <label>식별번호 (ID-NO)</label>
+      <input type="text" id="f-id" value="245-0987" placeholder="000-0000">
+    </div>
+    <div class="fg">
+      <label>계급 (RANK)</label>
+      <select id="f-rank">
+        <option value="Field Agent">Field Agent</option>
+        <option value="Field Agent Leader">Field Agent Leader</option>
+        <option value="Manage Agent">Manage Agent</option>
+        <option value="Manage Agent Leader">Manage Agent Leader</option>
+        <option value="Branch Manager">Branch Manager</option>
+        <option value="General Leader">General Leader</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>소속 부대 (UNIT)</label>
+      <input type="text" id="f-unit" value="WIZARD-Ⅶ" placeholder="WIZARD-Ⅶ">
+    </div>
+    <div class="fg">
+      <label>이메일 (EMAIL)</label>
+      <input type="email" id="f-email" value="245-0987@seed.gov.kr" placeholder="id@seed.gov.kr">
+    </div>
+    <div class="fg">
+      <label>관리 등급</label>
+      <select id="f-class">
+        <option value="none">none</option>
+        <option value="green">녹색 — CLASS-Ⅰ  SAFE</option>
+        <option value="yellow">황색 — CLASS-Ⅱ  CAUTION</option>
+        <option value="red" selected>적색 — CLASS-Ⅲ  HAZARD</option>
+        <option value="black">흑색 — CLASS-Ⅳ  APOCALYPTIC</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>전문 능력</label>
+      <input type="text" id="f-ability" value="정신간섭 / 인지조작" placeholder="능력명">
+    </div>
+    <div class="fg">
+      <label>초상존재 여부</label>
+      <select id="f-paranormal">
+        <option value="yes">● 초상존재 확인</option>
+        <option value="no">일반 요원</option>
+        <option value="unknown">● [불명]</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>요원 사진 (선택)</label>
+      <input type="file" id="f-photo" accept="image/*">
+    </div>
+
+    <button class="btn-gen" id="gen-btn" onclick="generateCard()">● 카드 생성 / GENERATE</button>
+    <button class="btn-dl" id="dl-btn" onclick="downloadCard()">↓ PNG 이미지 저장</button>
+  </div>
+
+  <div class="preview-panel">
+    <div class="preview-panel-label">미리보기 — 요원 신상 카드 (640×330)</div>
+    <div class="card-stage">
+      <div id="card-wrap">
+        <div id="the-card" class="doc">
+          <div class="top-accent"></div>
+          <div class="ano-ambience"></div>
+          <div class="card-body">
+
+            <div class="card-top">
+              <div class="card-org">S.E.E.D. &nbsp;—&nbsp; AGENT IDENTIFICATION</div>
+              <span class="class-pip pip-red" id="pip-el">● 적색</span>
+            </div>
+
+            <div class="card-main">
+              <div class="photo-box" id="photo-box">
+                <div class="photo-placeholder">ID<br>PHOTO</div>
+              </div>
+              <div class="card-fields">
+                <div class="cf"><span class="ck">NAME</span><span class="dots">······</span><span class="cv" id="cv-name">████ ████</span></div>
+                <div class="cf"><span class="ck">ID-NO</span><span class="dots">·····</span><span class="cv hi" id="cv-id">245-0987</span></div>
+                <div class="cf"><span class="ck">RANK</span><span class="dots">······</span><span class="cv" id="cv-rank">Field Agent</span></div>
+                <div class="cf"><span class="ck">UNIT</span><span class="dots">······</span><span class="cv hi" id="cv-unit">WIZARD-Ⅶ</span></div>
+                <div class="cf"><span class="ck">EMAIL</span><span class="dots">·····</span><span class="cv" id="cv-email">245-0987@seed.gov.kr</span></div>
+                <div class="cf"><span class="ck">ABILITY</span><span class="dots">···</span><span class="cv" id="cv-ability">정신간섭 / 인지조작</span></div>
+                <div class="cf"><span class="ck">STATUS</span><span class="dots">····</span><span class="cv red" id="cv-para">● 초상존재 확인</span></div>
+              </div>
+            </div>
+
+            <div class="card-ftr">
+              <span class="card-slogan">"오늘의 우리는 내일의 씨앗을 관리한다."</span>
+              <span class="card-no" id="cv-no">S.E.E.D. · 245-0987</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      카드 생성 후 PNG 저장 버튼이 나타납니다.<br>
+      출력 해상도: 1280 × 660 px
+    </div>
+  </div>
+</div>
+
+<script>
+var mode = 'doc';
+var photoURL = null;
+
+var classMap = {
+  none:   { label: '● none', cls: 'pip-none'   },
+  green:  { label: '● 녹색', cls: 'pip-green'  },
+  yellow: { label: '● 황색', cls: 'pip-yellow' },
+  red:    { label: '● 적색', cls: 'pip-red'    },
+  black:  { label: '● 흑색', cls: 'pip-black'  }
+};
+var paraText = { yes: '● 초상존재 확인', no: '일반 요원', unknown: '● [불명]' };
+var paraCls  = { yes: 'cv red', no: 'cv', unknown: 'cv yel' };
+
+function setStatus(msg, type) {
+  var bar = document.getElementById('status-bar');
+  var txt = document.getElementById('status-text');
+  bar.className = type || '';
+  txt.textContent = msg;
+}
+
+function setMode(m) {
+  mode = m;
+  var card = document.getElementById('the-card');
+  var dl   = document.getElementById('dl-btn');
+  if (m === 'doc') {
+    card.className = 'doc';
+    document.getElementById('btn-doc').className = 'mode-btn sel-doc';
+    document.getElementById('btn-ano').className = 'mode-btn';
+    dl.className = 'btn-dl doc';
+  } else {
+    card.className = 'ano';
+    document.getElementById('btn-ano').className = 'mode-btn sel-ano';
+    document.getElementById('btn-doc').className = 'mode-btn';
+    dl.className = 'btn-dl ano';
+  }
+}
+
+document.getElementById('f-photo').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    photoURL = ev.target.result;
+    document.getElementById('photo-box').innerHTML =
+      '<img src="' + photoURL + '" alt="agent">';
+  };
+  reader.readAsDataURL(file);
+});
+
+function generateCard() {
+  var name  = document.getElementById('f-name').value    || '████ ████';
+  var id    = document.getElementById('f-id').value      || '000-0000';
+  var rank  = document.getElementById('f-rank').value;
+  var unit  = document.getElementById('f-unit').value    || '—';
+  var email = document.getElementById('f-email').value   || '—';
+  var cls   = document.getElementById('f-class').value;
+  var abi   = document.getElementById('f-ability').value || '—';
+  var para  = document.getElementById('f-paranormal').value;
+
+  document.getElementById('cv-name').textContent    = name;
+  document.getElementById('cv-id').textContent      = id;
+  document.getElementById('cv-rank').textContent    = rank;
+  document.getElementById('cv-unit').textContent    = unit;
+  document.getElementById('cv-email').textContent   = email;
+  document.getElementById('cv-ability').textContent = abi;
+  document.getElementById('cv-no').textContent      = 'S.E.E.D. · ' + id;
+
+  var paraEl = document.getElementById('cv-para');
+  paraEl.textContent = paraText[para];
+  paraEl.className   = paraCls[para];
+
+  var pip = document.getElementById('pip-el');
+  pip.textContent = classMap[cls].label;
+  pip.className   = 'class-pip ' + classMap[cls].cls;
+
+  setMode(mode);
+
+  var dl = document.getElementById('dl-btn');
+  dl.style.display = 'block';
+  dl.textContent = '↓ PNG 저장 — ' + id;
+
+  setStatus('● 카드 생성 완료 — 저장 버튼을 눌러 PNG로 다운로드', 'success');
+}
+
+function downloadCard() {
+  if (typeof htmlToImage === 'undefined') {
+    setStatus('● 오류: html-to-image 라이브러리 로드 실패 — 인터넷 연결 확인 필요', 'error');
+    return;
+  }
+
+  var genBtn = document.getElementById('gen-btn');
+  var dlBtn  = document.getElementById('dl-btn');
+  genBtn.disabled = true;
+  dlBtn.style.opacity = '0.4';
+
+  var id   = document.getElementById('f-id').value || 'agent';
+  var safe = id.replace(/[^a-zA-Z0-9가-힣\-]/g, '_');
+  var card = document.getElementById('the-card');
+
+  function done() {
+    genBtn.disabled = false;
+    dlBtn.style.opacity = '1';
+  }
+
+  function doCapture() {
+    setStatus('● 캡처 중... (잠시만 기다려주세요)', 'busy');
+
+    htmlToImage.toPng(card, {
+      pixelRatio: 2,
+      cacheBust: true,
+      width: card.offsetWidth,
+      height: card.offsetHeight
+    })
+    .then(function(dataUrl) {
+      var link = document.createElement('a');
+      link.download = 'SEED_AgentCard_' + safe + '_' + mode.toUpperCase() + '.png';
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setStatus('● 저장 완료 — ' + link.download, 'success');
+      done();
+    })
+    .catch(function(err) {
+      console.error('Capture error:', err);
+      setStatus('● 캡처 오류: ' + (err.message || err) + ' (F12 Console 확인)', 'error');
+      done();
+    });
+  }
+
+  var remaining = 3;
+  setStatus('● 캡처 준비 중... ' + remaining + '초', 'busy');
+  var countdown = setInterval(function() {
+    remaining--;
+    if (remaining > 0) {
+      setStatus('● 캡처 준비 중... ' + remaining + '초', 'busy');
+    } else {
+      clearInterval(countdown);
+      doCapture();
+    }
+  }, 1000);
+}
+
+window.addEventListener('load', function() {
+  if (typeof htmlToImage === 'undefined') {
+    setStatus('● 경고: html-to-image 라이브러리가 로드되지 않음 — 인터넷 연결 필요', 'error');
+  } else {
+    setStatus('● 라이브러리 로드 완료 — 카드 정보를 입력해주세요', 'success');
+    setTimeout(function() {
+      setStatus('● 준비 완료 — 정보 입력 후 카드를 생성하세요');
+    }, 2000);
+  }
+});
+
+generateCard();
+</script>
+</body>
+</html>
